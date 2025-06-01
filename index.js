@@ -31,10 +31,16 @@ async function run() {
 
     // all jobs get from db
     app.get("/jobs", async (req, res) => {
-      const cursor = jobsCollection.find();
-      const result = await cursor.toArray();
+      // get data use query parameter
+      const email = req.query.email;
+      const query = {};
+      if (email) {
+        query.hr_email = email;
+      }
+      const result = await jobsCollection.find(query).toArray();
       res.send(result);
     });
+
     // get data use id
     app.get("/jobs/:id", async (req, res) => {
       const id = req.params.id;
@@ -43,7 +49,14 @@ async function run() {
       res.send(result);
     });
 
-    // get data use query parameter
+    // post new job
+    app.post("/jobs", async (req, res) => {
+      const newJobs = req.body;
+      const result = await jobsCollection.insertOne(newJobs);
+      res.send(result);
+    });
+
+    // get applications data use query parameter
     app.get("/applications", async (req, res) => {
       const email = req.query.email;
       const query = {
