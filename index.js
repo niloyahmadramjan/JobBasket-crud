@@ -2,12 +2,27 @@ const express = require("express");
 const cors = require("cors");
 const app = express();
 require("dotenv").config();
+//jwt token
+const jwt = require("jsonwebtoken");
+// cookie parser
+const cookieParser = require("cookie-parser");
 const port = process.env.PORT || 3000;
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 
 // middleware
-app.use(cors());
+app.use(
+  cors({
+    origin: ["http://localhost:5173/"],
+    credentials: true,
+  })
+);
 app.use(express.json());
+
+
+
+
+
+
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.eznirgn.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
@@ -29,6 +44,22 @@ async function run() {
       .db("jobportal")
       .collection("applicatoins");
 
+    // jwt token related api
+    app.post("/jwt", async (req, res) => {
+      const userData = req.body;
+      const token = jwt.sign(userData, process.env.JWT_ACCESS_SECRET, {
+        expiresIn: "1h",
+      });
+
+      //set the token
+      res.cookie("token", token, {
+        httpOnly: true,
+        secure: false,
+      });
+
+      res.send({ success: true });
+    });
+
     // all jobs get from db
     app.get("/jobs", async (req, res) => {
       // get data use query parameter
@@ -49,10 +80,29 @@ async function run() {
       res.send(result);
     });
 
+    // get applications apply data
+    app.get("/viewApplications/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { jobId: id };
+      const result = await applicationsCollection.find(query).toArray();
+      res.send(result);
+    });
+
     // post new job
     app.post("/jobs", async (req, res) => {
       const newJobs = req.body;
       const result = await jobsCollection.insertOne(newJobs);
+      res.send(result);
+    });
+
+    // update status
+    app.patch("/status/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updatedDoc = {
+        $set: { status: req.body.status },
+      };
+      const result = await applicationsCollection.updateOne(filter, updatedDoc);
       res.send(result);
     });
 
@@ -111,6 +161,19 @@ async function run() {
     app.post("/applications", async (req, res) => {
       const applicationsData = req.body;
       const result = await applicationsCollection.insertOne(applicationsData);
+      res.send(result);
+    });
+
+    // apply job delete
+    app.delete("/applications/:id", async (req, res) => {
+      const filter = { _id: new ObjectId(req.params.id) };
+      const result = await applicationsCollection.deleteOne(filter);
+      res.send(result);
+    });
+    // apply job delete
+    app.delete("/postedJobs/:id", async (req, res) => {
+      const filter = { _id: new ObjectId(req.params.id) };
+      const result = await jobsCollection.deleteOne(filter);
       res.send(result);
     });
 
